@@ -1,0 +1,73 @@
+{% extends "vocab/base.html" %}
+
+{% block title %}Today • RusLearn{% endblock %}
+
+{% block content %}
+  <div class="stack">
+    {% if words %}
+      {% for w in words %}
+        <article class="card" data-card>
+          <div class="row">
+            <div class="word">{{ w.word }}</div>
+            <div class="pill">flashcard</div>
+          </div>
+
+          <div class="content">
+            <p class="muted">Try to recall the meaning before revealing.</p>
+
+            <div class="reveal hidden" data-reveal>
+              <p><strong>Translation:</strong> {{ w.translation }}</p>
+              {% if w.example %}
+                <p><strong>Example:</strong> <span class="muted">{{ w.example }}</span></p>
+              {% endif %}
+            </div>
+
+            <div class="actions">
+              <button type="button" data-toggle>Reveal</button>
+              <button type="button" class="good hidden" data-known>✅ I knew it</button>
+              <button type="button" class="bad hidden" data-unknown>❌ I didn’t</button>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="card">
+        <div class="word">No words yet</div>
+        <p class="muted">Import from Sheets and you’re good.</p>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Tiny vanilla JS: reveal answers + show "knew/unknown" buttons
+  document.querySelectorAll('[data-card]').forEach(card => {
+    const reveal = card.querySelector('[data-reveal]');
+    const toggle = card.querySelector('[data-toggle]');
+    const known = card.querySelector('[data-known]');
+    const unknown = card.querySelector('[data-unknown]');
+
+    toggle.addEventListener('click', () => {
+      const isHidden = reveal.classList.contains('hidden');
+      reveal.classList.toggle('hidden');
+
+      toggle.textContent = isHidden ? 'Hide' : 'Reveal';
+      known.classList.toggle('hidden', !isHidden);
+      unknown.classList.toggle('hidden', !isHidden);
+    });
+
+    // For now these just give feedback; later we’ll save progress in DB.
+    known.addEventListener('click', () => {
+      known.textContent = '✅ Logged (later)';
+      known.disabled = true;
+      unknown.disabled = true;
+    });
+    unknown.addEventListener('click', () => {
+      unknown.textContent = '❌ Logged (later)';
+      unknown.disabled = true;
+      known.disabled = true;
+    });
+  });
+</script>
+{% endblock %}
