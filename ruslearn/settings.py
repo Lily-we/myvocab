@@ -15,12 +15,7 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DEBUG", "1") == "1"
 
-ALLOWED_HOSTS = (
-    os.environ.get("ALLOWED_HOSTS", "")
-    .split(",")
-    if not DEBUG
-    else ["127.0.0.1", "localhost"]
-)
+ALLOWED_HOSTS = ["myvocab-28an.onrender.com", ".onrender.com", "127.0.0.1", "localhost"]
 
 
 # =========================
