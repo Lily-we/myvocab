@@ -1,6 +1,7 @@
+import os
 import gspread
 from google.oauth2.service_account import Credentials
-from django.conf import settings
+
 from .models import Word
 
 SCOPES = [
@@ -8,29 +9,51 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-def sync_words_from_sheets(spreadsheet_name: str = "RussianWords", worksheet_title: str | None = None) -> int:
+
+def sync_words_from_sheets(
+    spreadsheet: str = None,
+    worksheet: str = None,
+    creds_path: str = None,
+) -> dict:
     """
-    Pull rows from Google Sheets and upsert into the Word table.
-    Returns number of rows processed.
+    Pull rows from Google Sheets and upsert into Word model.
+    Returns stats dict: {rows, upserted, skipped}
     """
-    creds = Credentials.from_service_account_file("creds.json", scopes=SCOPES)
+    spreadsheet = spreadsheet or os.environ.get("SHEET_NAME", "RussianWords")
+    worksheet = worksheet or os.environ.get("SHEET_TAB", "Sheet1")
+    creds_path = creds_path or os.environ.get("GOOGLE_CREDS_PATH", "creds.json")
+
+    if not os.path.exists(creds_path):
+        raise FileNotFoundError(
+            f"Creds file not found: {creds_path}. "
+            f"Set GOOGLE_CREDS_PATH or place creds.json in project root."
+        )
+
+    creds = Credentials.from_service_account_file(creds_path, scopes=SCOPES)
     client = gspread.authorize(creds)
 
-    sh = client.open(spreadsheet_name)
-    ws = sh.worksheet(worksheet_title) if worksheet_title else sh.sheet1
+    ws = client.open(spreadsheet).worksheet(worksheet)
+    rows = ws.get_all_records()
 
-    rows = ws.get_all_records()  # expects row1 headers
+    upserted = 0
+    skipped = 0
+
     for row in rows:
-        word = (row.get("word") or "").strip()
-        translation = (row.get("translation") or "").strip()
-        example = (row.get("example") or "").strip()
+        # normalize headers just in case
+        row = {str(k).strip().lower(): v for k, v in row.items()}
 
-        if not word or not translation:
+        w = (row.get("word") or "").strip()
+        t = (row.get("translation") or "").strip()
+        e = (row.get("example") or "").strip()
+
+        if not w or not t:
+            skipped += 1
             continue
 
         Word.objects.update_or_create(
-            word=word,
-            defaults={"translation": translation, "example": example},
+            word=w,
+            defaults={"translation": t, "example": e},
         )
+        upserted += 1
 
-    return len(rows)
+    return {"rows": len(rows), "upserted": upserted, "skipped": skipped}
