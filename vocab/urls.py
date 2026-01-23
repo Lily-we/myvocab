@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import today
+from . import views
 
 urlpatterns = [
-    path('', today, name='today'),
+    path("", views.today, name="today"),
+    path("review/<int:word_id>/<str:result>/", views.review_word, name="review"),
 ]
